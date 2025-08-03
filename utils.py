@@ -1,26 +1,27 @@
-import datetime
-import requests
+from saudi_price_scraper import get_saudi_price
+from polygon_price_fetcher import get_us_price
+from stock_analyzer import analyze_digitally_and_technically
+from news_handler import fetch_latest_news
+from sharia_check import check_sharia
 
-def get_today_key():
-    return datetime.date.today().isoformat()
-
-def calculate_digital_levels(high, low, parts=24):
-    step = (high - low) / parts
-    return [round(low + i * step, 2) for i in range(parts + 1)]
-
-def format_levels(levels):
-    return "\n".join([f"• {lvl:.2f}" for lvl in levels])
-
-def fetch_password():
-    return "123123"
-
-def fetch_news(symbol):
+def analyze_stock(stock_name: str) -> str:
     try:
-        url = f"https://newsapi.org/v2/everything?q={symbol}&apiKey=YOUR_NEWSAPI_KEY"
-        response = requests.get(url)
-        articles = response.json().get("articles", [])
-        if not articles:
-            return None
-        return "\n".join([f"• {a['title']}" for a in articles[:2]])
-    except:
-        return None
+        price = get_saudi_price(stock_name)
+        if price is None:
+            price = get_us_price(stock_name)
+
+        if price is None:
+            return "❌ لم يتم العثور على بيانات للسهم."
+
+        analysis = analyze_digitally_and_technically(stock_name, price)
+        news = fetch_latest_news(stock_name)
+        sharia_status = check_sharia(stock_name)
+
+        return f"{analysis}
+
+📰 الأخبار: {news}
+
+🕌 الشرعية: {sharia_status}"
+
+    except Exception as e:
+        return f"❌ حدث خطأ أثناء التحليل: {str(e)}"
