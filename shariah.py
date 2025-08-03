@@ -1,1 +1,0 @@
-def check_shariah_status(symbol): return "✅ متوافق مع الضوابط الشرعية"
