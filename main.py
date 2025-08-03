@@ -1,4 +1,3 @@
-
 import logging
 import openai
 import os
@@ -67,9 +66,13 @@ def get_us_price(symbol):
 def main():
     logging.basicConfig(level=logging.INFO)
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(MessageHandler(filters.TEXT, handle_password))
+    # ✅ أولاً تحقق من كلمة السر
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password))
+    # ✅ ثم السماح بتحليل السهم بعد التحقق
+    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+
     app.run_polling()
 
 if __name__ == "__main__":
