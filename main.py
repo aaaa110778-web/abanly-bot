@@ -1,83 +1,106 @@
-import telebot
-import requests
-from bs4 import BeautifulSoup
+
+import logging
 import yfinance as yf
+from telegram import Update, Bot
+from telegram.ext import CommandHandler, MessageHandler, Filters, Updater, CallbackContext
 import pandas as pd
+import datetime
 
+# إعدادات البوت
 TOKEN = "7250935830:AAEhcPifdrDk9Bxufd-rpsm2nM-cehkSAuk"
-bot = telebot.TeleBot(TOKEN)
-
-AUTHORIZED_USERS = {}
 PASSWORD = "123123"
+AUTHORIZED_USERS = set()
+STOCK_MAP = {
+    "الراجحي": "1120.SE",
+    "أرامكو": "2222.SE",
+    "سابك": "2010.SE",
+    "المجموعة السعودية": "2250.SE",
+    "سيرا": "1810.SE",
+}
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    chat_id = message.chat.id
-    if chat_id not in AUTHORIZED_USERS:
-        bot.send_message(chat_id, "🔒 أرسل كلمة المرور لاستخدام البوت:")
+# تهيئة البوت
+logging.basicConfig(level=logging.INFO)
+bot = Bot(token=TOKEN)
+
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("مرحبًا! أرسل كلمة السر أولًا.")
+
+def authenticate(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    text = update.message.text.strip()
+    if text == PASSWORD:
+        AUTHORIZED_USERS.add(user_id)
+        update.message.reply_text("✅ تم التحقق! الآن أرسل اسم السهم لتحليله.")
     else:
-        bot.send_message(chat_id, "أهلًا بك! أرسل اسم السهم للحصول على التحليل.")
+        update.message.reply_text("❌ كلمة السر غير صحيحة.")
 
-@bot.message_handler(func=lambda m: m.chat.id not in AUTHORIZED_USERS)
-def check_password(message):
-    if message.text == PASSWORD:
-        AUTHORIZED_USERS[message.chat.id] = True
-        bot.send_message(message.chat.id, "✅ تم التحقق! أرسل اسم السهم الآن.")
-    else:
-        bot.send_message(message.chat.id, "❌ كلمة المرور غير صحيحة. حاول مرة أخرى.")
+def get_stock_symbol(name_or_symbol: str):
+    name = name_or_symbol.strip().upper()
+    if name in STOCK_MAP:
+        return STOCK_MAP[name]
+    if name.isalpha() and len(name) <= 5:
+        return name  # أمريكي غالباً
+    return None
 
-@bot.message_handler(func=lambda m: True)
-def handle_stock_request(message):
-    if message.chat.id not in AUTHORIZED_USERS:
-        bot.send_message(message.chat.id, "🔒 يجب إدخال كلمة المرور أولاً.")
+def analyze_stock(symbol: str):
+    try:
+        data = yf.download(symbol, period="6mo", interval="1d", progress=False)
+        if data.empty:
+            return "❌ لم يتم العثور على بيانات للسهم."
+
+        high = data["High"].max()
+        low = data["Low"].min()
+        current_price = data["Close"].iloc[-1]
+        step = (high - low) / 24
+        levels = [low + i * step for i in range(25)]
+        near_levels = [lvl for lvl in levels if abs(lvl - current_price) <= step * 3]
+
+        msg = f"🔍 تحليل رقمي وفني لسهم {symbol}:
+"
+        msg += f"• السعر الحالي: {current_price:.2f}
+"
+        msg += f"• أعلى سعر: {high:.2f}
+• أقل سعر: {low:.2f}
+"
+        msg += f"• أقرب المستويات:
+" + "
+".join([f"- {lvl:.2f}" for lvl in near_levels])
+
+        if current_price > levels[-2]:
+            msg += "
+✅ السهم قريب من المقاومة العليا."
+        elif current_price < levels[1]:
+            msg += "
+⚠️ السهم قريب من الدعم السفلي."
+
+        return msg
+
+    except Exception as e:
+        return f"حدث خطأ أثناء التحليل: {str(e)}"
+
+def handle_message(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    if user_id not in AUTHORIZED_USERS:
+        update.message.reply_text("🚫 أرسل كلمة السر أولًا.")
         return
 
-    stock_symbol = message.text.strip().upper()
-    msg = f"📊 تحليل السهم {stock_symbol}\n"
+    text = update.message.text.strip()
+    symbol = get_stock_symbol(text)
+    if not symbol:
+        update.message.reply_text("❌ لم يتم التعرف على السهم.")
+        return
 
-    try:
-        # تحليل فني مبسط
-        data = yf.download(stock_symbol, period="5d", interval="1h")
-        if data.empty:
-            bot.send_message(message.chat.id, "❌ لم يتم العثور على بيانات للسهم.")
-            return
+    msg = analyze_stock(symbol)
+    update.message.reply_text(msg)
 
-        latest = data.iloc[-1]
-        close_price = latest["Close"]
-        volume = latest["Volume"]
+def main():
+    updater = Updater(token=TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, authenticate))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    updater.start_polling()
+    updater.idle()
 
-        msg += f"🔹 آخر سعر: {close_price:.2f}\n"
-        msg += f"🔹 حجم التداول: {volume:.0f}\n"
-
-        # مثال لتحليل بسيط (إغلاق فوق متوسط)
-        ma50 = data["Close"].rolling(window=50).mean().iloc[-1]
-        if close_price > ma50:
-            msg += "✅ السعر فوق المتوسط 50 - إشارة إيجابية\n"
-        else:
-            msg += "⚠️ السعر تحت المتوسط 50 - تحتاج حذر\n"
-
-        # تقييم الصفقة (تجريبي)
-        confidence = 92  # لاحقًا يُحسب آليًا
-        msg += f"🎯 نسبة نجاح الصفقة المتوقعة: {confidence}%\n"
-
-        # الشرعية من موقع يقين
-        try:
-            yakin_url = f"https://yaqeen.sa/stock/{stock_symbol}"
-            headers = {"User-Agent": "Mozilla/5.0"}
-            response = requests.get(yakin_url, headers=headers, timeout=10)
-            soup = BeautifulSoup(response.text, "html.parser")
-            tag = soup.find("div", string=lambda t: t and "شرعية" in t)
-            if tag:
-                msg += f"🕌 الشرعية: {tag.text.strip()}\n"
-            else:
-                msg += "🕌 الشرعية: المعلومة غير متوفرة\n"
-        except:
-            msg += "🕌 الشرعية: المعلومة غير متوفرة\n"
-
-        # الأخبار: مدمجة في التحليل الداخلي فقط (لا تُعرض)
-
-        bot.send_message(message.chat.id, msg)
-    except Exception as e:
-        bot.send_message(message.chat.id, f"حدث خطأ أثناء التحليل: {e}")
-
-bot.polling()
+if __name__ == "__main__":
+    main()
