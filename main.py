@@ -44,7 +44,7 @@ def handle_message(message):
         news = get_stock_news(stock_symbol)
         shariah = check_shariah_status(stock_symbol)
 
-        msg = f"📊 تحليل السهم: {stock_symbol}
+        msg = f"📊 تحليل السهم: {stock_symbol}"
 
 "
         msg += result + "
