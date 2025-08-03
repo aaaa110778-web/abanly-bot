@@ -21,8 +21,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔒 أرسل كلمة السر للمتابعة.")
 
 async def handle_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if AUTHORIZED_USERS.get(user_id):
+        return  # ✅ تم التحقق مسبقاً، تجاهل
+
     if update.message.text == DAILY_PASSWORD:
-        user_id = update.message.from_user.id
         AUTHORIZED_USERS[user_id] = True
         await update.message.reply_text("✅ تم التحقق. أرسل اسم السهم الآن.")
     else:
@@ -66,15 +69,10 @@ def get_us_price(symbol):
 def main():
     logging.basicConfig(level=logging.INFO)
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
-    # ✅ أولاً تحقق من كلمة السر
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password))
-    # ✅ ثم السماح بتحليل السهم بعد التحقق
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
-
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-app.run_polling()
