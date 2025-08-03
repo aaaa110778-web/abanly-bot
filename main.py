@@ -3,8 +3,8 @@ import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from stock_analyzer import analyze_stock
-from modules.auth import is_authorized, authorize_user
-from modules.auth import load_authorized_users  # تحميل المستخدمين المحفوظين
+from  auth import is_authorized, authorize_user
+from auth import load_authorized_users  # تحميل المستخدمين المحفوظين
 
 # إعدادات البوت
 TOKEN = "7250935830:AAEhcPifdrDk9Bxufd-rpsm2n-cehkSAuk"
