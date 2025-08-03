@@ -1,1 +1,0 @@
-def get_stock_news(symbol): return "لا يوجد أخبار مؤثرة حالياً."
