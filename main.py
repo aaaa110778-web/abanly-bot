@@ -20,24 +20,21 @@ openai.api_key = OPENAI_API_KEY
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔒 أرسل كلمة السر للمتابعة.")
 
-async def handle_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if AUTHORIZED_USERS.get(user_id):
-        return  # ✅ تم التحقق مسبقاً، تجاهل
-
-    if update.message.text == DAILY_PASSWORD:
-        AUTHORIZED_USERS[user_id] = True
-        await update.message.reply_text("✅ تم التحقق. أرسل اسم السهم الآن.")
-    else:
-        await update.message.reply_text("❌ كلمة السر غير صحيحة.")
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if not AUTHORIZED_USERS.get(user_id, False):
-        await update.message.reply_text("🔒 أرسل كلمة السر أولاً.")
+    text = update.message.text.strip()
+
+    # ✅ التحقق من كلمة السر إذا لم يكن المستخدم مُصرح له
+    if not AUTHORIZED_USERS.get(user_id):
+        if text == DAILY_PASSWORD:
+            AUTHORIZED_USERS[user_id] = True
+            await update.message.reply_text("✅ تم التحقق. أرسل اسم السهم الآن.")
+        else:
+            await update.message.reply_text("❌ كلمة السر غير صحيحة.")
         return
 
-    symbol = update.message.text.strip().upper()
+    # ✅ تحليل السهم
+    symbol = text.upper()
     saudi = not symbol.isascii()
     price = get_saudi_price(symbol) if saudi else get_us_price(symbol)
     if not price:
@@ -69,9 +66,10 @@ def get_us_price(symbol):
 def main():
     logging.basicConfig(level=logging.INFO)
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_password))
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
     app.run_polling()
 
 if __name__ == "__main__":
