@@ -1,4 +1,4 @@
 python-telegram-bot==20.6
-yfinance==0.2.36
-requests==2.31.0
-beautifulsoup4==4.12.3
+requests
+yfinance
+beautifulsoup4
