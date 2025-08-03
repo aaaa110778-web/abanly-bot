@@ -1,2 +1,2 @@
-# محتوى ملف requirements.txt
+# محتوى ملف yakeen_scraper.py
 # سيتم استبداله بالكود النهائي.

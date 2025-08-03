@@ -1,2 +1,2 @@
-# محتوى ملف requirements.txt
+# محتوى ملف news_fetcher.py
 # سيتم استبداله بالكود النهائي.
