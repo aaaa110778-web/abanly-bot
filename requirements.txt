@@ -1,2 +1,5 @@
-# محتوى ملف requirements.txt
-# سيتم استبداله بالكود النهائي.
+
+openai
+python-telegram-bot==20.3
+requests
+beautifulsoup4
