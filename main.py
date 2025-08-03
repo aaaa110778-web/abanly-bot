@@ -47,7 +47,7 @@ def handle_message(message):
         msg = f"📊 تحليل السهم: {stock_symbol}"
 
 
-        msg += result + "
+        msg += result + 
 
 "
         if news:
