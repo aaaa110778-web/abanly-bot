@@ -11,13 +11,21 @@ def analyze_stock(symbol: str) -> str:
 
     high_price = hist['High'].max()
     low_price = hist['Low'].min()
-    current_price = hist['Close'][-1]
+    current_price = hist['Close'].iloc[-1]  # ✅ تصحيح هنا
 
     digital_levels = calculate_digital_levels(high_price, low_price)
     nearest_levels = [lvl for lvl in digital_levels if abs(lvl - current_price) <= 1.5][:3]
 
     levels_text = format_levels(nearest_levels)
     news = fetch_news(symbol)
+
+    # ✅ حماية من خطأ IndexError إذا القائمة فاضية
+    if nearest_levels:
+        recommendation = f"""📌 التوصية:
+إذا استقر فوق {nearest_levels[0]:.2f} مع دعم المؤشر، فقد يواصل الصعود.
+📉 وقف الخسارة: دون {nearest_levels[0] - 0.5:.2f}"""
+    else:
+        recommendation = "📌 التوصية:\nلا توجد مستويات قريبة لتحليل التوصية."
 
     return f"""📊 *تحليل رقمي وفني لسهم {symbol.upper()}*:
 
@@ -31,7 +39,5 @@ def analyze_stock(symbol: str) -> str:
 📰 الأخبار المؤثرة:
 {news if news else "لا توجد أخبار مهمة."}
 
-📌 التوصية:
-إذا استقر فوق {nearest_levels[0]:.2f} مع دعم المؤشر، فقد يواصل الصعود.
-📉 وقف الخسارة: دون {nearest_levels[0] - 0.5:.2f}
+{recommendation}
 """
